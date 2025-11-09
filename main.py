@@ -1,3 +1,6 @@
+from data.account import Account
+from ingest.fetch_market import fetchhistoricaldata
+import asyncio
 class MAIN: 
     def __init__(self):
         self.value = "Hello, This is a \n === Agentic Trading System === \n Welcome! Let's set up your trading environment."
@@ -53,7 +56,7 @@ class MAIN:
         return True
     
     def createAccount(self, answers):
-        from data.account import Account
+        
         universe = []
         if answers['stock'] == '1':
             universe = ['AAPL']
@@ -75,9 +78,16 @@ class MAIN:
         print("Account created successfully!")
         return account
 
+    def ProcessData(self, account):
+        print("Fetching historical market data for your selected universe...")
+        asyncio.run(fetchhistoricaldata(account.universe))
+
+    
+
 
 if __name__ == "__main__":
     app = MAIN()
     answers = app.askQuestions()
     if app.processAnswers(answers):
         account = app.createAccount(answers)
+        app.ProcessData(account)
