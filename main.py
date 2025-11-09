@@ -81,6 +81,7 @@ class MAIN:
     def ProcessData(self, account):
         print("Fetching historical market data for your selected universe...")
         asyncio.run(fetchhistoricaldata(account.universe))
+        print("Data fetching complete. Your trading environment is set up and ready!")
 
     
 
