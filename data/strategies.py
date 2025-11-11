@@ -58,11 +58,11 @@ class MomentumStrategy(Strategies):
                 return signal
 
 class MeanReversionStrategy(Strategies):
-        def __init__(self, lookback_period=20, entry_zscore=2.0, exit_zscore=0.5):
+        # This strat is basically that anything that goes down will ocme back up and anything that goes up will come back down. Hence, we buy at low price because it will go back up to its mean and similarly once it goes up we sell it because it will go back down. 
+        def __init__(self, lookback_period=20, entry_zscore=2.0):
             super().__init__("Mean Reversion Strategy")
             self.lookback_period = lookback_period
             self.entry_zscore = entry_zscore
-            self.exit_zscore = exit_zscore
             self.requiredbars = lookback_period
 
         def generate_signals(self, symbol, data):
@@ -100,16 +100,45 @@ class MeanReversionStrategy(Strategies):
                 return signal
        
 class BreakoutStrategy(Strategies):
+        #This strat says that if the price breaks above a recent high or below a recent low it will continue in that direction 
         def __init__(self, breakout_period=20):
             super().__init__("Breakout Strategy")
             self.breakout_period = breakout_period
             self.requiredbars = breakout_period
+            
 
         def generate_signals(self, symbol, data):
-            pass  # Implementation goes here
+            highresistance = data['high'].tail(self.breakout_period).max()
+            lowresistance = data['low'].tail(self.breakout_period).min()
+            currentPrice = data['close'].iloc[-1]
 
-        def calculateFeatures(self, data):
-            pass  # Implementation goes here
+            if currentPrice>highresistance:
+                signal = Signals()
+                signal.symbol = symbol
+                signal.action = "BUY"
+                signal.confidence = min((currentPrice - highresistance) / highresistance, 1.0)
+                signal.reason = f"The current price of {currentPrice} is higher than {highresistance}"
+                signal.suggested_position_size = signal.confidence * 0.2
+                signal.stop_loss = highresistance * 0.99
+                signal.take_profit = currentPrice + (currentPrice - highresistance)
+                return signal
+            elif currentPrice < lowresistance:
+                 signal = Signals()
+                 signal.symbol = symbol 
+                 signal.action = "SELL"
+                 signal.confidence = min((lowresistance - currentPrice) / lowresistance, 1.0)
+                 signal.reason = f"The Price broke below the price of {lowresistance}"
+                 signal.suggested_position_size = signal.confidence * 0.2
+                 signal.stop_loss = lowresistance * 1.01
+                 signal.take_profit = currentPrice - (lowresistance - currentPrice) 
+                 return signal
+            else:
+                signal = Signals()
+                signal.symbol = symbol
+                signal.action = "HOLD"
+                signal.confidence = 1.0
+                signal.reason = "Price not broken"
+                return signal
        
 class MovingAverageCrossoverStrategy(Strategies):
         def __init__(self, short_window=50, long_window=200):
