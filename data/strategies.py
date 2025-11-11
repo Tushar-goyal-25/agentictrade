@@ -27,6 +27,7 @@ class MomentumStrategy(Strategies):
             oldPrice = data['close'].iloc[-self.lookback_period]
             momentum = (currentPrice - oldPrice) / oldPrice
             momentumPercent = momentum * 100
+            
 
             if momentumPercent > self.threshold*100:
                 signal = Signals()
@@ -65,10 +66,38 @@ class MeanReversionStrategy(Strategies):
             self.requiredbars = lookback_period
 
         def generate_signals(self, symbol, data):
-            pass  # Implementation goes here
-        
-        def calculateFeatures(self, data):
-            pass  # Implementation goes here
+            meanPrice = data['close'].tail(self.lookback_period).mean() # Calculate Mean
+            stdPrice = data['close'].tail(self.lookback_period).std()   # Calculate Standard Deviation
+            currentPrice = data['close'].iloc[-1]
+            z_score = (currentPrice - meanPrice) / stdPrice # Calculate Z-Score(how much the current price deviates from the mean in terms of standard deviations)
+
+            if z_score > self.entry_zscore:
+                signal = Signals()
+                signal.symbol = symbol
+                signal.action = "SELL"
+                signal.confidence = min(abs(z_score) / (self.entry_zscore), 1.0)
+                signal.reason = f"Z-score of {z_score:.2f} exceeds threshold {self.entry_zscore}, indicating overbought condition"
+                signal.suggested_position_size = signal.confidence * 0.2  # Example position sizing
+                signal.stop_loss = data['close'].iloc[-1] * 1.02  # 2% stop loss
+                signal.take_profit = meanPrice  # 5% take profit
+                return signal
+            elif z_score < -self.entry_zscore:
+                signal = Signals()
+                signal.symbol = symbol
+                signal.action = "BUY"
+                signal.confidence = min(abs(z_score) / (self.entry_zscore), 1.0)
+                signal.reason = f"Z-score of {z_score:.2f} below threshold {-self.entry_zscore}, indicating oversold condition"
+                signal.suggested_position_size = signal.confidence * 0.2  # Example position sizing
+                signal.stop_loss = data['close'].iloc[-1] * 0.98  # 2% stop loss
+                signal.take_profit =  meanPrice  # 5% take profit
+                return signal
+            else:
+                signal = Signals()
+                signal.symbol = symbol
+                signal.action = "HOLD"
+                signal.confidence = 1.0
+                signal.reason = "Price at mean "
+                return signal
        
 class BreakoutStrategy(Strategies):
         def __init__(self, breakout_period=20):
