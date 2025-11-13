@@ -89,7 +89,7 @@ class MeanReversionStrategy(Strategies):
                 signal.reason = f"Z-score of {z_score:.2f} below threshold {-self.entry_zscore}, indicating oversold condition"
                 signal.suggested_position_size = signal.confidence * 0.2  # Example position sizing
                 signal.stop_loss = data['close'].iloc[-1] * 0.98  # 2% stop loss
-                signal.take_profit =  meanPrice  # 5% take profit
+                signal.take_profit =  meanPrice  
                 return signal
             else:
                 signal = Signals()
@@ -148,11 +148,45 @@ class MovingAverageCrossoverStrategy(Strategies):
             self.requiredbars = long_window
 
         def generate_signals(self, symbol, data):
-            pass  # Implementation goes here
+            shortMa = data['close'].rolling(self.short_window).mean()
+            longMa = data['close'].rolling(self.long_window).mean()
+            shortMacurrent = shortMa.iloc[-1]
+            longMacurrent = longMa.iloc[-1]
+            shortMayest = shortMa.iloc[-2]
+            longMayest = longMa.iloc[-2]
+            currentprice = data['close'].iloc[-1]
 
-        def calculateFeatures(self, data):
-            pass  # Implementation goes here
-        
+
+            if shortMacurrent > longMacurrent and shortMayest <= longMayest:
+                signal = Signals()
+                signal.symbol = symbol
+                signal.action = "BUY"
+                signal.confidence = min(abs(shortMacurrent-longMacurrent) / longMacurrent * 10, 1.0)
+                signal.reason = "It was a golden cross"
+                signal.take_profit = currentprice + abs(shortMacurrent - longMacurrent)
+                signal.stop_loss = currentprice * 0.97
+                signal.suggested_position_size = signal.confidence * 0.2
+                return signal
+            
+            elif shortMacurrent < longMacurrent and shortMayest >= longMayest:
+                signal = Signals()
+                signal.symbol = symbol
+                signal.action = "SELL"
+                signal.confidence = min(abs(shortMacurrent-longMacurrent) / longMacurrent * 10, 1.0)
+                signal.reason = "It was a death cross"
+                signal.take_profit = currentprice - abs(shortMacurrent - longMacurrent)
+                signal.stop_loss = currentprice * 1.03
+                signal.suggested_position_size = signal.confidence * 0.2
+                return signal
+
+            else:
+                signal = Signals()
+                signal.symbol = symbol
+                signal.action = "HOLD"
+                signal.confidence = 1.0
+                signal.reason = "No crossovers detected"
+                return signal
+                
 
 class RSIStrategy(Strategies):
         def __init__(self, period=14, overbought=70, oversold=30):
