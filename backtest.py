@@ -29,7 +29,10 @@ class BackTester:
                     if self.cash >= position_value:
                         self.positions[symbol] = {
                             'shares': shares,
-                            'entry_price': current_price
+                            'entry_price': current_price,
+                            'stop_loss_price': signal.stop_loss,
+                            'take_profit_price': signal.take_profit
+
                         }
                         self.cash -= position_value
                         self.trades.append({
@@ -68,6 +71,54 @@ class BackTester:
                                             
                     })
                     del self.positions[symbol]
+            for sym in list(self.positions.keys()):
+                    if sym in self.positions:
+                        current_price = data_window['close'].iloc[-1]
+                        position = self.positions[sym]
+
+                        if current_price <= position['stop_loss_price']:
+                            entry_price = position['entry_price']
+                            shares = position['shares']
+                            sell_value = shares* current_price
+                            cost_basis = shares * entry_price
+                            profit_loss = sell_value - cost_basis
+                            self.cash += sell_value
+                            self.trades.append({
+                            'symbol': sym,
+                            'action': 'SELL',
+                            'date': data_window['ts'].iloc[-1],
+                            'price': current_price,
+                            'shares': shares,
+                            'value': sell_value,
+                            'reason': "stop-loss triggered", 
+                            'type': 'STOP_LOSS',
+                            'pnl': profit_loss,
+                                
+                            })
+                            del self.positions[sym
+                                               ]
+                            continue
+                    if current_price >= position['take_profit_price']:
+                        # Sell at take-profit
+                        shares = position['shares']
+                        entry_price = position['entry_price']
+                        sell_value = shares * current_price
+                        cost_basis = shares * entry_price
+                        profit_loss = sell_value - cost_basis
+                        
+                        self.cash += sell_value
+                        self.trades.append({
+                            'symbol': sym,
+                            'action': 'SELL',
+                            'date': data_window['ts'].iloc[-1],
+                            'price': current_price,
+                            'shares': shares,
+                            'value': sell_value,
+                            'reason': f"Take-profit triggered at ${current_price:.2f} (target: ${position['take_profit_price']:.2f})",
+                            'type': 'TAKE_PROFIT',
+                            'pnl': profit_loss
+                        })
+                        del self.positions[sym]        
             
             
             
