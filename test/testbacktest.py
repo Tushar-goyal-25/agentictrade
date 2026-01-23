@@ -13,7 +13,7 @@ class RiskParams:
     max_position_pct = 0.15
 
 async def main():
-    symbol = 'TSLA'
+    symbol = 'AAPL'
     lookback_days = 180
     historical_data =  await getMarketData(symbol, lookback_days)
     # print(historical_data)
@@ -27,7 +27,7 @@ async def main():
     # Debug: Check how many days we actually have
 
 
-    backtest.runBacktest(mean, symbol, historical_data, risk_params)
+    backtest.runBacktest(momentumstrat, symbol, historical_data, risk_params)
 
     
     print(f"\nOpen positions: {len(backtest.positions)}")
@@ -53,6 +53,13 @@ async def main():
     if sell_trades:
         total_pnl = sum(t['pnl'] for t in sell_trades)
         print(f"Total P&L from closed trades: ${total_pnl:,.2f}")
+        # Print portfolio history summary
+    if backtest.portfolio_history:
+        print(f"First day: {backtest.portfolio_history[0]}")
+        days_with_positions = [h for h in backtest.portfolio_history if h['position_value'] > 0]
+        print(f"\nDays with open positions: {len(days_with_positions)} out of {len(backtest.portfolio_history)}")
+        print(f"Day 50: {backtest.portfolio_history[50]}")  # Add this line
+        print(f"Last day: {backtest.portfolio_history[-1]}")
 
 if __name__ == "__main__":
     asyncio.run(main())

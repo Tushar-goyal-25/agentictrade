@@ -118,7 +118,21 @@ class BackTester:
                             'type': 'TAKE_PROFIT',
                             'pnl': profit_loss
                         })
-                        del self.positions[sym]        
+                        del self.positions[sym] 
+            total_value = self.cash
+            position_value = 0
+            for sym, position in self.positions.items():
+                current_price = data_window['close'].iloc[-1] 
+                position_value += position['shares'] * current_price
+            total_value += position_value
+            self.portfolio_history.append({
+                            'date': data_window['ts'].iloc[-1],
+                            'cash': float(self.cash),
+                            'position_value': float(position_value),
+                            'total_value': float(total_value)
+                        })
+
+
             
             
             
