@@ -13,53 +13,97 @@ class RiskParams:
     max_position_pct = 0.15
 
 async def main():
-    symbol = 'AAPL'
+    # Universe of stocks to test
+    universe = ['TSLA', 'NVDA', 'AMD', 'PLTR', 'COIN', 'SHOP', 'RIOT', 'META']
     lookback_days = 180
-    historical_data =  await getMarketData(symbol, lookback_days)
-    # print(historical_data)
-    backtest = BackTester(10000, 2)
-    momentumstrat = MomentumStrategy()
-    mean = MeanReversionStrategy()
-    mov = MovingAverageCrossoverStrategy()
-    breaks = BreakoutStrategy()
+    initial_capital = 10000
+
+    # Initialize strategy
+    strategy = MomentumStrategy()
     risk_params = RiskParams()
 
-    # Debug: Check how many days we actually have
+    print("=" * 60)
+    print(f"BACKTESTING {strategy.__class__.__name__} ACROSS UNIVERSE")
+    print("=" * 60)
 
+    results = []
 
-    backtest.runBacktest(momentumstrat, symbol, historical_data, risk_params)
+    # Backtest each symbol in the universe
+    for symbol in universe:
+        print(f"\n{'='*60}")
+        print(f"Testing {symbol}...")
+        print(f"{'='*60}")
 
-    
-    print(f"\nOpen positions: {len(backtest.positions)}")
+        try:
+            # Get historical data
+            historical_data = await getMarketData(symbol, lookback_days)
 
-# Calculate total portfolio value
-    portfolio_value = backtest.cash
-    if backtest.positions:
-        last_price = historical_data['close'].iloc[-1]
-        for sym, pos in backtest.positions.items():
-            position_value = pos['shares'] * last_price
-            portfolio_value += position_value
-            print(f"  {sym}: {pos['shares']:.2f} shares @ ${pos['entry_price']:.2f}")
+            if historical_data.empty:
+                print(f"❌ No data available for {symbol}")
+                continue
 
-    print(f"\nPortfolio value: ${portfolio_value:,.2f}")
-    print(f"Total return: {(portfolio_value - 10000) / 10000 * 100:+.2f}%")
+            # Run backtest
+            backtest = BackTester(initial_capital, 2)
+            backtest.runBacktest(strategy, symbol, historical_data, risk_params)
 
-    # Trade breakdown
-    buy_trades = [t for t in backtest.trades if t['action'] == 'BUY']
-    sell_trades = [t for t in backtest.trades if t['action'] == 'SELL']
-    print(f"\nBUY trades: {len(buy_trades)}")
-    print(f"SELL trades: {len(sell_trades)}")
+            # Calculate final portfolio value
+            portfolio_value = backtest.cash
+            if backtest.positions:
+                last_price = historical_data['close'].iloc[-1]
+                for sym, pos in backtest.positions.items():
+                    portfolio_value += pos['shares'] * last_price
 
-    if sell_trades:
-        total_pnl = sum(t['pnl'] for t in sell_trades)
-        print(f"Total P&L from closed trades: ${total_pnl:,.2f}")
-        # Print portfolio history summary
-    if backtest.portfolio_history:
-        print(f"First day: {backtest.portfolio_history[0]}")
-        days_with_positions = [h for h in backtest.portfolio_history if h['position_value'] > 0]
-        print(f"\nDays with open positions: {len(days_with_positions)} out of {len(backtest.portfolio_history)}")
-        print(f"Day 50: {backtest.portfolio_history[50]}")  # Add this line
-        print(f"Last day: {backtest.portfolio_history[-1]}")
+            # Calculate metrics
+            total_return = (portfolio_value - initial_capital) / initial_capital * 100
+            buy_trades = [t for t in backtest.trades if t['action'] == 'BUY']
+            sell_trades = [t for t in backtest.trades if t['action'] == 'SELL']
+            total_pnl = sum(t['pnl'] for t in sell_trades) if sell_trades else 0
+
+            # Store results
+            result = {
+                'symbol': symbol,
+                'final_value': portfolio_value,
+                'total_return': total_return,
+                'buy_trades': len(buy_trades),
+                'sell_trades': len(sell_trades),
+                'total_pnl': total_pnl,
+                'open_positions': len(backtest.positions),
+                'days_with_positions': len([h for h in backtest.portfolio_history if h['position_value'] > 0])
+            }
+            results.append(result)
+
+            # Print individual results
+            print(f"\n📊 Results for {symbol}:")
+            print(f"   Final Value: ${portfolio_value:,.2f}")
+            print(f"   Total Return: {total_return:+.2f}%")
+            print(f"   Trades: {len(buy_trades)} BUY, {len(sell_trades)} SELL")
+            print(f"   Closed P&L: ${total_pnl:,.2f}")
+            print(f"   Open Positions: {len(backtest.positions)}")
+
+        except Exception as e:
+            print(f"❌ Error testing {symbol}: {e}")
+            continue
+
+    # Print summary
+    print(f"\n{'='*60}")
+    print("SUMMARY - ALL SYMBOLS")
+    print(f"{'='*60}")
+    print(f"{'Symbol':<10} {'Return':<12} {'Final Value':<15} {'Trades':<10} {'P&L':<12}")
+    print("-" * 60)
+
+    for r in sorted(results, key=lambda x: x['total_return'], reverse=True):
+        print(f"{r['symbol']:<10} {r['total_return']:+.2f}%      ${r['final_value']:>10,.2f}    {r['buy_trades']:>2}/{r['sell_trades']:<2}     ${r['total_pnl']:>9,.2f}")
+
+    # Calculate portfolio-level metrics
+    if results:
+        avg_return = sum(r['total_return'] for r in results) / len(results)
+        best = max(results, key=lambda x: x['total_return'])
+        worst = min(results, key=lambda x: x['total_return'])
+
+        print("-" * 60)
+        print(f"Average Return: {avg_return:+.2f}%")
+        print(f"Best: {best['symbol']} ({best['total_return']:+.2f}%)")
+        print(f"Worst: {worst['symbol']} ({worst['total_return']:+.2f}%)")
 
 if __name__ == "__main__":
     asyncio.run(main())

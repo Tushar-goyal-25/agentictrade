@@ -101,7 +101,7 @@ class MeanReversionStrategy(Strategies):
        
 class BreakoutStrategy(Strategies):
         #This strat says that if the price breaks above a recent high or below a recent low it will continue in that direction 
-        def __init__(self, breakout_period=20):
+        def __init__(self, breakout_period=50):
             super().__init__("Breakout Strategy")
             self.breakout_period = breakout_period
             self.requiredbars = breakout_period
