@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from data.dataLodaer import getMarketData
 from data.strategies import MomentumStrategy, MeanReversionStrategy, MovingAverageCrossoverStrategy, BreakoutStrategy
 from backtest import BackTester
+from ingest.metrics import Metrics
 
 class RiskParams:
     max_position_pct = 0.15
@@ -79,6 +80,17 @@ async def main():
             print(f"   Trades: {len(buy_trades)} BUY, {len(sell_trades)} SELL")
             print(f"   Closed P&L: ${total_pnl:,.2f}")
             print(f"   Open Positions: {len(backtest.positions)}")
+
+            # Calculate and print metrics
+            metrics = Metrics(backtest)
+            print(f"\n   === METRICS ===")
+            print(f"   Sharpe Ratio: {metrics.calculatesharperatio():.2f}")
+            drawdown_pct, drawdown_val = metrics.calculatedrawdown()
+            print(f"   Max Drawdown: {drawdown_pct:.2f}% (${drawdown_val:,.2f})")
+            ret_val, ret_pct = metrics.calculatetotalreturn()
+            print(f"   Total Return: {ret_pct:.2f}% (${ret_val:,.2f})")
+            print(f"   Win Rate: {metrics.calculatewinrate():.2f}%")
+            print(f"   Profit Factor: {metrics.calculateprofitfactor():.2f}")
 
         except Exception as e:
             print(f"❌ Error testing {symbol}: {e}")
