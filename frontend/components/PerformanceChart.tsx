@@ -49,7 +49,9 @@ export default function PerformanceChart({ data, symbol }: PerformanceChartProps
               borderRadius: '8px',
               fontSize: '12px'
             }}
-            formatter={(value: number) => [`$${value.toFixed(2)}`, 'Portfolio Value']}
+            formatter={(value: number | undefined) =>
+              value !== undefined ? [`$${value.toFixed(2)}`, 'Portfolio Value'] : ['N/A', 'Portfolio Value']
+            }
           />
           <Line
             type="monotone"
