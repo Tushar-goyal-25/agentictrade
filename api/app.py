@@ -205,4 +205,5 @@ def compare_strategies():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001, use_reloader=False)
+    port = int(os.environ.get('PORT', 5001))
+    app.run(debug=os.environ.get('FLASK_ENV') != 'production', host='0.0.0.0', port=port, use_reloader=False)
